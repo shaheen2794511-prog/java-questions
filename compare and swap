@@ -1,0 +1,53 @@
+class LockFreeStack<T> {
+
+    private static class Node<T> {
+        T value;
+        Node<T> next;
+
+        Node(T value) {
+            this.value = value;
+        }
+    }
+
+    private Node<T> top = null;
+
+    // Assume this API performs an atomic CAS operation.
+    private native boolean compareAndSwap(
+        Object object,
+        String field,
+        Object expected,
+        Object update
+    );
+
+    public void push(T value) {
+        Node<T> newNode = new Node<>(value);
+
+        while (true) {
+            Node<T> currentTop = top;
+
+            newNode.next = currentTop;
+
+            if (compareAndSwap(
+                    this, "top", currentTop, newNode)) {
+                return;
+            }
+        }
+    }
+
+    public T pop() {
+        while (true) {
+            Node<T> currentTop = top;
+
+            if (currentTop == null) {
+                return null;
+            }
+
+            Node<T> nextNode = currentTop.next;
+
+            if (compareAndSwap(
+                    this, "top", currentTop, nextNode)) {
+                return currentTop.value;
+            }
+        }
+    }
+}

@@ -1,0 +1,255 @@
+
+import java.util.*;
+
+class Player {
+    private final String name;
+    private int position;
+
+    public Player(String name) {
+        this.name = name;
+        this.position = 0;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public int getPosition() {
+        return position;
+    }
+
+    public void setPosition(int position) {
+        this.position = position;
+    }
+}
+
+class Snake {
+    private final int head;
+    private final int tail;
+
+    public Snake(int head, int tail) {
+        if (head <= tail) {
+            throw new IllegalArgumentException(
+                    "Snake head must be above its tail");
+        }
+        this.head = head;
+        this.tail = tail;
+    }
+
+    public int getHead() {
+        return head;
+    }
+
+    public int getTail() {
+        return tail;
+    }
+}
+
+class Ladder {
+    private final int bottom;
+    private final int top;
+
+    public Ladder(int bottom, int top) {
+        if (bottom >= top) {
+            throw new IllegalArgumentException(
+                    "Ladder top must be above its bottom");
+        }
+        this.bottom = bottom;
+        this.top = top;
+    }
+
+    public int getBottom() {
+        return bottom;
+    }
+
+    public int getTop() {
+        return top;
+    }
+}
+
+class Board {
+    private final int size;
+    private final Map<Integer, Integer> jumps = new HashMap<>();
+
+    public Board(int size, List<Snake> snakes,
+                 List<Ladder> ladders) {
+        if (size < 2) {
+            throw new IllegalArgumentException(
+                    "Board size must be at least 2");
+        }
+
+        this.size = size;
+
+        for (Snake snake : snakes) {
+            validateCell(snake.getHead());
+            validateCell(snake.getTail());
+
+            if (jumps.containsKey(snake.getHead())) {
+                throw new IllegalArgumentException(
+                        "Duplicate snake or ladder start");
+            }
+
+            jumps.put(snake.getHead(), snake.getTail());
+        }
+
+        for (Ladder ladder : ladders) {
+            validateCell(ladder.getBottom());
+            validateCell(ladder.getTop());
+
+            if (jumps.containsKey(ladder.getBottom())) {
+                throw new IllegalArgumentException(
+                        "Duplicate snake or ladder start");
+            }
+
+            jumps.put(ladder.getBottom(), ladder.getTop());
+        }
+    }
+
+    private void validateCell(int cell) {
+        if (cell < 1 || cell > size) {
+            throw new IllegalArgumentException(
+                    "Position outside the board: " + cell);
+        }
+    }
+
+    public int getSize() {
+        return size;
+    }
+
+    public int getDestination(int position) {
+        return jumps.getOrDefault(position, position);
+    }
+}
+
+class Dice {
+    private final int numberOfDice;
+    private final Random random = new Random();
+
+    public Dice(int numberOfDice) {
+        if (numberOfDice < 1) {
+            throw new IllegalArgumentException(
+                    "At least one die is required");
+        }
+        this.numberOfDice = numberOfDice;
+    }
+
+    public int roll() {
+        int total = 0;
+
+        for (int i = 0; i < numberOfDice; i++) {
+            total += random.nextInt(6) + 1;
+        }
+
+        return total;
+    }
+}
+
+class Game {
+    private final Board board;
+    private final Dice dice;
+    private final Queue<Player> players = new LinkedList<>();
+    private boolean started = false;
+
+    public Game(Board board, Dice dice, List<Player> players) {
+        if (players == null || players.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "At least one player is required");
+        }
+
+        Set<String> names = new HashSet<>();
+
+        for (Player player : players) {
+            if (player == null ||
+                    !names.add(player.getName())) {
+                throw new IllegalArgumentException(
+                        "Players must be non-null with unique names");
+            }
+            this.players.offer(player);
+        }
+
+        this.board = board;
+        this.dice = dice;
+    }
+
+    public void start() {
+        if (started) {
+            throw new IllegalStateException(
+                    "Game has already started");
+        }
+
+        started = true;
+        System.out.println("Game started!");
+
+        while (true) {
+            Player player = players.poll();
+            int roll = dice.roll();
+            int current = player.getPosition();
+            int next = current + roll;
+
+            System.out.println(
+                    player.getName() + " rolled " + roll);
+
+            if (next > board.getSize()) {
+                System.out.println(
+                        player.getName()
+                        + " stays at " + current
+                        + " (move exceeds board)");
+            } else {
+                int destination = board.getDestination(next);
+                player.setPosition(destination);
+
+                System.out.println(
+                        player.getName() + " moved to " + next);
+
+                if (destination > next) {
+                    System.out.println(
+                            "Climbed ladder to " + destination);
+                } else if (destination < next) {
+                    System.out.println(
+                            "Bitten by snake! Moved to "
+                            + destination);
+                }
+
+                if (destination == board.getSize()) {
+                    System.out.println(
+                            player.getName() + " wins!");
+                    break;
+                }
+            }
+
+            players.offer(player);
+        }
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        List<Snake> snakes = Arrays.asList(
+                new Snake(99, 54),
+                new Snake(70, 55),
+                new Snake(52, 42),
+                new Snake(25, 2),
+                new Snake(95, 72)
+        );
+
+        List<Ladder> ladders = Arrays.asList(
+                new Ladder(6, 25),
+                new Ladder(11, 40),
+                new Ladder(60, 85),
+                new Ladder(46, 90),
+                new Ladder(17, 69)
+        );
+
+        Board board = new Board(100, snakes, ladders);
+        Dice dice = new Dice(1);
+
+        List<Player> players = Arrays.asList(
+                new Player("Alice"),
+                new Player("Bob"),
+                new Player("Charlie")
+        );
+
+        Game game = new Game(board, dice, players);
+        game.start();
+    }
+}

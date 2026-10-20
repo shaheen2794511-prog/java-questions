@@ -1,0 +1,146 @@
+private int democrats;
+private int republicans;
+
+private final CyclicBarrier barrier =
+        new CyclicBarrier(4);
+
+private final ReentrantLock lock =
+        new ReentrantLock();
+
+private final Semaphore demsWaiting = new Semaphore(0);
+private final Semaphore repubsWaiting = new Semaphore(0);
+
+democrats++;
+
+lock.lock();
+
+democrats++;
+
+void seatDemocrat()
+        throws InterruptedException, BrokenBarrierException {
+
+    boolean rideLeader = false;
+
+    lock.lock();
+    democrats++;
+
+    // Check whether a valid group can be formed.
+    // Release selected riders, or wait for a permit.
+
+    seated();
+    barrier.await();
+
+    if (rideLeader) {
+        drive();
+        lock.unlock();
+    }
+}
+if (/* valid group found */) {
+    // Release the selected riders.
+    // Update both counters.
+}
+
+// Either unlock or retain the lock for the ride leader.
+// Case A (DEMOCRATS)
+if (democrats == 2 && republicans >= 2) {
+    repubsWaiting.release(2);
+    demsWaiting.release(1);
+
+    rideLeader = true;
+
+    democrats -= 2;
+    republicans -= 2;
+}
+// CASE B
+else if (democrats == 4) {
+    demsWaiting.release(3);
+
+    rideLeader = true;
+
+    democrats -= 4;
+}
+// CASE C
+else {
+    lock.unlock();
+    demsWaiting.acquire();
+} 
+
+void seatRepublicans()
+        throws InterruptedException, BrokenBarrierException {
+
+    boolean rideLeader = false;
+
+    lock.lock();
+    republicans++;
+
+    // Check whether a valid group can be formed.
+    // Release selected riders, or wait for a permit.
+
+    seated();
+    barrier.await();
+
+    if (rideLeader) {
+        drive();
+        lock.unlock();
+    }
+}
+
+CASE A (REPUBLICANS)
+if (republicans == 4) {
+    republicans -= 4;
+    rideLeader = true;
+
+    repubsWaiting.release(3);
+}
+CASE B
+else if (republicans == 2 && democrats >= 2) {
+    republicans -= 2;
+    democrats -= 2;
+
+    rideLeader = true;
+
+    repubsWaiting.release(1);
+    demsWaiting.release(2);
+}
+CASE C
+else {
+    lock.unlock();
+    repubsWaiting.acquire();
+}
+
+private final CyclicBarrier barrier = new CyclicBarrier(4);
+
+seated();
+barrier.await();
+
+if (rideLeader) {
+    drive();
+    lock.unlock();
+}
+
+final UberSeatingProblem uberSeatingProblem =
+        new UberSeatingProblem();
+
+Set<Thread> allThreads = new HashSet<>();
+
+for (int i = 0; i < 10; i++) {
+    Thread thread = new Thread(() -> {
+        try {
+            uberSeatingProblem.seatDemocrat();
+        } catch (InterruptedException |
+                 BrokenBarrierException e) {
+            System.out.println("We have a problem");
+        }
+    });
+
+    thread.setName("Democrat_" + (i + 1));
+    allThreads.add(thread);
+}
+
+for (Thread t : allThreads) {
+    t.start();
+}
+
+for (Thread t : allThreads) {
+    t.join();
+}

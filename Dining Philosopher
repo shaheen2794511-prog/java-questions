@@ -1,0 +1,56 @@
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
+
+public class DiningPhilosophers {
+    private static final int N = 5;  // Number of philosophers
+    private static final Semaphore[] chopstick = new Semaphore[N];
+
+    public static void main(String[] args) {
+        // Initialize chopstick semaphores
+        for (int i = 0; i < N; i++) {
+            chopstick[i] = new Semaphore(1);
+        }
+
+        // Create philosopher threads
+        for (int i = 0; i < N; i++) {
+            new Thread(new Philosopher(i)).start();
+        }
+    }
+
+    static class Philosopher implements Runnable {
+        private final int id;
+
+        Philosopher(int id) {
+            this.id = id;
+        }
+
+        @Override
+        public void run() {
+            while (true) {
+                System.out.println("Philosopher " + id + " is thinking...");
+                sleep(1);
+
+                // Pick up left chopstick
+                try { chopstick[id].acquire(); } catch (InterruptedException e) { e.printStackTrace(); }
+
+                // Pick up right chopstick
+                try { chopstick[(id + 1) % N].acquire(); } catch (InterruptedException e) { e.printStackTrace(); }
+
+                System.out.println("Philosopher " + id + " is eating...");
+                sleep(2);
+
+                // Put down left chopstick
+                chopstick[id].release();
+
+                // Put down right chopstick
+                chopstick[(id + 1) % N].release();
+
+                System.out.println("Philosopher " + id + " finished eating and put down chopsticks.");
+            }
+        }
+
+        private void sleep(int seconds) {
+            try { TimeUnit.SECONDS.sleep(seconds); } catch (InterruptedException e) { e.printStackTrace(); }
+        }
+    }
+}

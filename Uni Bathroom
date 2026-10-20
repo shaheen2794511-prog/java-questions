@@ -1,0 +1,61 @@
+class UnisexBathroom {
+    int counter;
+    mutex mtx;
+    condition_variable cv;
+};
+void maleUseBathroom(string name) {
+    unique_lock<mutex> l(mtx);
+
+    cv.wait(l, [&] {
+        return counter >= 0 && counter <= 2;
+    });
+
+    counter++;
+    cout << counter << " " << name
+         << " Male entered" << endl;
+
+    l.unlock();
+
+    cout << "Male used the bathroom" << endl;
+
+    l.lock();
+    counter--;
+    l.unlock();
+
+    cv.notify_all();
+}
+void femaleUseBathroom(string name) {
+    unique_lock<mutex> l(mtx);
+
+    cv.wait(l, [&] {
+        return counter <= 0 && counter >= -2;
+    });
+
+    counter--;
+    cout << counter << " " << name
+         << " Female entered" << endl;
+
+    l.unlock();
+
+    cout << "Female used the bathroom" << endl;
+
+    l.lock();
+    counter++;
+    l.unlock();
+
+    cv.notify_all();
+}
+UnisexBathroom *bathroom = new UnisexBathroom();
+
+thread t1(maleUseBathroom, bathroom, "Sahil");
+thread t5(femaleUseBathroom, bathroom, "Riya");
+thread t2(maleUseBathroom, bathroom, "Satya");
+thread t3(maleUseBathroom, bathroom, "Mark");
+
+thread t6(femaleUseBathroom, bathroom, "Rani");
+thread t6(femaleUseBathroom, bathroom, "Rashi");
+
+thread t4(maleUseBathroom, bathroom, "Sundar");
+
+t1.join(), t2.join(), t3.join(),
+t4.join(), t5.join(), t6.join();

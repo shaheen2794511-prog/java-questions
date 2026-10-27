@@ -1,4 +1,4 @@
-class UnisexBathroom {
+class UniBathroom {
     int counter;
     mutex mtx;
     condition_variable cv;
@@ -45,7 +45,7 @@ void femaleUseBathroom(string name) {
 
     cv.notify_all();
 }
-UnisexBathroom *bathroom = new UnisexBathroom();
+UniBathroom *bathroom = new UniBathroom();
 
 thread t1(maleUseBathroom, bathroom, "Sahil");
 thread t5(femaleUseBathroom, bathroom, "Riya");

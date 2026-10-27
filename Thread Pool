@@ -1,7 +1,7 @@
 Thread Pool in Java — LLD and System Design
 A Thread Pool is a collection of reusable worker threads that execute multiple tasks without creating a new thread for every task.
 
-Since you're preparing for Java LLD interviews, let's understand the concept, implementation, and execution flow.
+Let's understand the concept, implementation, and execution flow.
 1. Why do we need a Thread Pool?
 Without a thread pool:
 - Every task creates a new thread.

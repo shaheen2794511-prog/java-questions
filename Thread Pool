@@ -1,0 +1,185 @@
+Thread Pool in Java — LLD and System Design
+A Thread Pool is a collection of reusable worker threads that execute multiple tasks without creating a new thread for every task.
+
+Since you're preparing for Java LLD interviews, let's understand the concept, implementation, and execution flow.
+1. Why do we need a Thread Pool?
+Without a thread pool:
+- Every task creates a new thread.
+- Creating and destroying threads repeatedly adds overhead.
+- Too many threads can consume excessive memory and CPU resources.
+With a thread pool:
+- Threads are created once and reused.
+- Tasks wait in a queue when all workers are busy.
+- We can control the maximum number of concurrent tasks.
+Tasks submitted
+
+Task 1 · Task 2 · Task 3 · Task 4 · Task 5
+
+
+Task Queue
+
+Waiting tasks are stored here
+
+
+Thread Pool — 3 Worker Threads
+Worker 1
+
+Task 1
+
+
+Worker 2
+
+Task 2
+
+
+Worker 3
+
+Task 3
+
+
+
+
+When a worker finishes, it picks up the next task from the queue.
+
+2. Java's built-in Thread Pool
+Java provides the Executor Framework to manage threads.
+import java.util.concurrent.*;
+
+public class Main {
+    public static void main(String[] args) {
+        ExecutorService pool =
+            Executors.newFixedThreadPool(3);
+
+        for (int i = 1; i <= 5; i++) {
+            int taskId = i;
+
+            pool.submit(() -> {
+                System.out.println(
+                    "Task " + taskId + " executed by "
+                    + Thread.currentThread().getName()
+                );
+            });
+        }
+
+        pool.shutdown();
+    }
+}
+
+
+How this code works
+1. newFixedThreadPool(3) creates a pool configured with three worker threads.
+2. pool.submit() submits tasks for execution.
+3. The executor schedules submitted tasks on available workers.
+4. If all workers are busy, additional tasks wait in the queue.
+5. When a worker finishes, it can execute another task.
+6. shutdown() stops accepting new tasks and allows submitted tasks to finish.
+Important: The execution order and the order of printed output are not guaranteed to match task submission order.
+3. Implement a Thread Pool from scratch (LLD interview)
+The core components are:
+- Task — represents the work to execute.
+- BlockingQueue — stores pending tasks.
+- Worker — continuously takes tasks from the queue and executes them.
+- ThreadPool — manages workers, task submission, and shutdown.
+import java.util.concurrent.*;
+
+class ThreadPool {
+    private final BlockingQueue<Runnable> taskQueue;
+    private final Thread[] workers;
+    private volatile boolean isShutdown = false;
+
+    public ThreadPool(int numberOfThreads, int queueCapacity) {
+        if (numberOfThreads <= 0 || queueCapacity <= 0) {
+            throw new IllegalArgumentException();
+        }
+
+        taskQueue = new ArrayBlockingQueue<>(queueCapacity);
+        workers = new Thread[numberOfThreads];
+
+        for (int i = 0; i < numberOfThreads; i++) {
+            workers[i] = new Thread(() -> {
+                while (true) {
+                    try {
+                        Runnable task = taskQueue.take();
+                        task.run();
+                    } catch (InterruptedException e) {
+                        if (isShutdown) {
+                            return;
+                        }
+                    } catch (RuntimeException e) {
+                        System.err.println(
+                            "Task failed: " + e.getMessage()
+                        );
+                    }
+                }
+            });
+
+            workers[i].start();
+        }
+    }
+
+    public void submit(Runnable task) {
+        if (isShutdown) {
+            throw new RejectedExecutionException(
+                "Thread pool is shut down"
+            );
+        }
+
+        if (!taskQueue.offer(task)) {
+            throw new RejectedExecutionException(
+                "Task queue is full"
+            );
+        }
+    }
+
+    public void shutdown() {
+        isShutdown = true;
+
+        for (Thread worker : workers) {
+            worker.interrupt();
+        }
+    }
+}
+
+
+Example usage:
+public class Main {
+    public static void main(String[] args) {
+        ThreadPool pool = new ThreadPool(2, 10);
+
+        pool.submit(() ->
+            System.out.println("Task 1")
+        );
+
+        pool.submit(() ->
+            System.out.println("Task 2")
+        );
+
+        pool.submit(() ->
+            System.out.println("Task 3")
+        );
+
+        pool.shutdown();
+    }
+}
+
+
+Important limitation of this basic implementation
+This is an educational implementation, not a production-ready thread pool. Its shutdown method can abandon queued tasks, and submission can race with shutdown. A production implementation needs coordinated lifecycle management, graceful draining, worker interruption handling, and a clear policy for rejected tasks.
+4. Execution flow
+Client calls submit(task)
+
+Task enters the blocking queue
+An available worker takes the task
+Worker executes task.run()
+
+Worker returns to the queue for another task
+
+5. Important LLD interview questions
+Question	What you should explain
+Why use a BlockingQueue?	Thread-safe task storage and waiting when empty
+Why reuse threads?	Avoid repeated thread creation overhead
+What if the queue is full?	Reject, block, or apply a defined backpressure policy
+How do you shut down?	Stop accepting tasks and drain pending work
+What if a task throws an exception?	Isolate task failures so workers can continue
+How do you make it thread-safe?	Coordinate submission, shutdown, and queue access
+How many workers are needed?	Depends on CPU-bound versus I/O-bound work
